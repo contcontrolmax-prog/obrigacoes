@@ -1,0 +1,1036 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Controlmax – Gestão de Obrigações</title>
+  <style>
+    :root {
+      --blue:#1B2A6B; --blue-light:#2a3d8f; --orange:#C0392B; --orange-light:#e74c3c;
+      --gray-bg:#F5F6FA; --gray-border:#E2E8F0; --gray-text:#718096;
+      --text:#1A202C; --success:#27AE60; --warning:#E67E22; --info:#2980B9; --purple:#8E44AD;
+    }
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--gray-bg);color:var(--text);min-height:100vh}
+
+    /* LOGIN — visível por padrão, sem depender de JS */
+    #login-screen{position:fixed;inset:0;background:linear-gradient(135deg,var(--blue) 0%,var(--blue-light) 100%);display:flex;align-items:center;justify-content:center;z-index:500}
+    #app-shell{display:none}
+    .login-box{background:white;border-radius:16px;padding:36px 32px;width:360px;box-shadow:0 24px 64px rgba(0,0,0,.25)}
+    .login-logo{font-size:28px;font-weight:800;text-align:center;margin-bottom:4px}
+    .login-logo .ctrl{color:var(--blue)}.login-logo .max{color:var(--orange)}
+    .login-sub{text-align:center;font-size:10px;letter-spacing:2px;color:var(--gray-text);margin-bottom:26px}
+    .login-title{font-size:14px;font-weight:700;text-align:center;margin-bottom:18px}
+    .login-err{border-radius:7px;padding:8px 12px;font-size:12px;margin-bottom:12px;display:none;background:#fff0f0;color:var(--orange);border:1px solid #ffd0d0}
+
+    /* SIDEBAR */
+    .sidebar{position:fixed;top:0;left:0;bottom:0;width:230px;background:var(--blue);color:white;display:flex;flex-direction:column;z-index:100}
+    .sidebar-logo{padding:20px 18px 16px;border-bottom:1px solid rgba(255,255,255,.1)}
+    .logo-text{font-size:22px;font-weight:800;letter-spacing:-.5px}
+    .logo-text .ctrl{color:#d0d8ff}.logo-text .max{color:#e05a3a}
+    .logo-sub{font-size:9px;letter-spacing:2px;opacity:.5;margin-top:4px}
+    .sidebar-nav{padding:12px 0;flex:1;overflow-y:auto}
+    .nav-item{display:flex;align-items:center;gap:10px;padding:10px 18px;cursor:pointer;font-size:13px;opacity:.65;transition:all .2s;border-left:3px solid transparent;user-select:none}
+    .nav-item:hover{opacity:1;background:rgba(255,255,255,.06)}
+    .nav-item.active{opacity:1;background:rgba(255,255,255,.11);border-left-color:var(--orange)}
+    .nav-icon{font-size:16px;width:20px;text-align:center}
+    .sidebar-user{padding:10px 18px;border-top:1px solid rgba(255,255,255,.1);display:flex;align-items:center;gap:8px;cursor:pointer}
+    .sidebar-user:hover{background:rgba(255,255,255,.06)}
+    .s-av{width:28px;height:28px;border-radius:50%;color:white;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;background:var(--orange)}
+    .s-name{font-size:11px;font-weight:700;color:white;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .s-role{font-size:9px;opacity:.5;color:white}
+    .master-badge{background:#e05a3a;color:white;font-size:8px;font-weight:800;padding:1px 5px;border-radius:4px;margin-left:4px}
+    .sidebar-footer{padding:10px 18px;font-size:10px;opacity:.3;border-top:1px solid rgba(255,255,255,.08)}
+
+    /* MAIN */
+    .main{margin-left:230px;min-height:100vh}
+    .header{background:white;padding:14px 26px;border-bottom:1px solid var(--gray-border);display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+    .header h1{font-size:18px;font-weight:700;color:var(--blue)}
+    .month-nav{display:flex;align-items:center;gap:8px}
+    .month-label{font-size:14px;font-weight:700;color:var(--blue);min-width:150px;text-align:center}
+    .content{padding:20px 26px}
+
+    /* BUTTONS */
+    .btn{padding:7px 15px;border:none;border-radius:7px;cursor:pointer;font-size:12.5px;font-weight:600;transition:all .15s}
+    .btn-primary{background:var(--blue);color:white}.btn-primary:hover{background:var(--blue-light)}
+    .btn-orange{background:var(--orange);color:white}.btn-orange:hover{background:var(--orange-light)}
+    .btn-ghost{background:transparent;color:var(--blue);border:1.5px solid var(--gray-border)}.btn-ghost:hover{background:var(--gray-bg)}
+    .btn-danger{background:#fff0f0;color:var(--orange);border:1.5px solid #ffd0d0}.btn-danger:hover{background:#ffe0e0}
+    .btn-sm{padding:4px 10px;font-size:11.5px}.btn-xs{padding:3px 8px;font-size:11px}
+
+    /* STATS */
+    .cards-row{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px}
+    .card{background:white;border-radius:10px;padding:17px 19px;border:1px solid var(--gray-border)}
+    .stat-card .label{font-size:10.5px;color:var(--gray-text);font-weight:700;text-transform:uppercase;letter-spacing:.6px}
+    .stat-card .value{font-size:32px;font-weight:800;margin:5px 0 2px}
+    .stat-card .sublabel{font-size:11px;color:var(--gray-text)}
+    .stat-card.blue .value{color:var(--blue)}.stat-card.orange .value{color:var(--orange)}
+    .stat-card.green .value{color:var(--success)}.stat-card.yellow .value{color:var(--warning)}
+    .content-grid{display:grid;grid-template-columns:305px 1fr;gap:16px}
+
+    /* CALENDAR */
+    .calendar-card{background:white;border-radius:10px;border:1px solid var(--gray-border);overflow:hidden}
+    .calendar-header{background:var(--blue);color:white;padding:11px 14px;display:flex;justify-content:space-between;align-items:center}
+    .calendar-header button{background:none;border:none;color:white;cursor:pointer;font-size:20px;padding:0 4px;opacity:.75;line-height:1}
+    .calendar-header button:hover{opacity:1}.calendar-title{font-size:13px;font-weight:700}
+    .cal-grid{display:grid;grid-template-columns:repeat(7,1fr)}
+    .cal-day-name{padding:6px 4px;text-align:center;font-size:10px;font-weight:700;color:var(--gray-text);background:#f7f8fc;border-bottom:1px solid var(--gray-border)}
+    .cal-day{min-height:44px;padding:3px;border-right:1px solid var(--gray-border);border-bottom:1px solid var(--gray-border);cursor:pointer;transition:background .1s}
+    .cal-day:hover{background:#eef1fc}.cal-day.today{background:#eaf0ff}.cal-day.other-month{opacity:.22;cursor:default}
+    .cal-day-num{font-size:10.5px;font-weight:600;padding:1px 2px}
+    .cal-day.today .cal-day-num{background:var(--blue);color:white;border-radius:50%;width:19px;height:19px;display:flex;align-items:center;justify-content:center}
+    .cal-badges{display:flex;flex-wrap:wrap;gap:2px;margin-top:2px}
+    .cal-badge{width:6px;height:6px;border-radius:50%}
+    .cb-red{background:var(--orange)}.cb-green{background:var(--success)}.cb-yellow{background:var(--warning)}.cb-blue{background:var(--info)}.cb-purple{background:var(--purple)}.cb-gray{background:#aaa}
+
+    /* LIST */
+    .list-card{background:white;border-radius:10px;border:1px solid var(--gray-border);overflow:hidden}
+    .list-header{padding:13px 17px;border-bottom:1px solid var(--gray-border);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px}
+    .list-header h3{font-size:14px;font-weight:700}
+    .filters{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+    .fsel{padding:5px 9px;border:1.5px solid var(--gray-border);border-radius:7px;font-size:12px;background:white;cursor:pointer}
+    .fsel:focus{outline:none;border-color:var(--blue)}
+    .fsearch{padding:5px 9px;border:1.5px solid var(--gray-border);border-radius:7px;font-size:12px;background:white;outline:none;min-width:150px}
+    .fsearch:focus{border-color:var(--blue)}
+
+    /* TABLE */
+    table{width:100%;border-collapse:collapse}
+    th{padding:8px 13px;text-align:left;font-size:10px;font-weight:700;color:var(--gray-text);text-transform:uppercase;letter-spacing:.6px;background:#f8f9fc;border-bottom:1px solid var(--gray-border);cursor:pointer;user-select:none;white-space:nowrap}
+    th:hover{background:#eef1fc;color:var(--blue)}
+    td{padding:10px 13px;font-size:12.5px;border-bottom:1px solid var(--gray-border);vertical-align:middle}
+    tr:last-child td{border-bottom:none}tr:hover td{background:#fafbff}
+
+    /* BADGES */
+    .badge{display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:20px;font-size:10.5px;font-weight:700;white-space:nowrap}
+    .badge::before{content:'';width:5px;height:5px;border-radius:50%;background:currentColor;flex-shrink:0}
+    .s-aguardando_docs{background:#FFF3CD;color:#7d5a00}.s-em_processamento{background:#CCE5FF;color:#003d7a}
+    .s-enviado{background:#EDE0F7;color:#5a1a8a}.s-concluido{background:#D4EDDA;color:#145a28}.s-atrasado{background:#F8D7DA;color:#7b1a22}
+    .r-SN{background:#D4EDDA;color:#145a28}.r-LP{background:#CCE5FF;color:#003d7a}
+    .g-fiscal{background:#dbeeff;color:#003d7a}.g-pessoal{background:#EDE0F7;color:#5a1a8a}
+    .g-contabil{background:#D4EDDA;color:#145a28}.g-societario{background:#fff0db;color:#7d4500}
+    .venc-late{color:var(--orange);font-weight:700}
+
+    /* CLIENTS / USERS */
+    .clients-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(265px,1fr));gap:14px}
+    .client-card{background:white;border-radius:10px;border:1px solid var(--gray-border);padding:15px;cursor:pointer;transition:all .2s}
+    .client-card:hover{border-color:var(--blue);box-shadow:0 2px 10px rgba(27,42,107,.1)}
+    .users-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:14px}
+    .user-card{background:white;border-radius:10px;border:1px solid var(--gray-border);padding:15px;cursor:pointer;transition:all .2s}
+    .user-card:hover{border-color:var(--blue);box-shadow:0 2px 10px rgba(27,42,107,.1)}
+    .user-card.master-card{border-color:#e05a3a;box-shadow:0 0 0 2px rgba(192,57,43,.12)}
+    .u-av{width:40px;height:40px;border-radius:50%;color:white;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;margin-bottom:10px;background:var(--blue)}
+    .u-av.master{background:var(--orange)}
+    .perfil-tag{display:inline-block;padding:2px 9px;border-radius:20px;font-size:10.5px;font-weight:700}
+    .perfil-master{background:#ffd0d0;color:#7b1a22}.perfil-admin{background:#FFF3CD;color:#7d5a00}
+    .perfil-contador{background:#CCE5FF;color:#003d7a}.perfil-assistente{background:#EDE0F7;color:#5a1a8a}
+
+    /* MODAL */
+    .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.48);z-index:9000;display:flex;align-items:center;justify-content:center;padding:20px}
+    .modal{background:white;border-radius:12px;width:100%;max-width:460px;max-height:92vh;overflow-y:auto;box-shadow:0 24px 64px rgba(0,0,0,.18)}
+    .modal-header{padding:17px 22px;border-bottom:1px solid var(--gray-border);display:flex;align-items:center;justify-content:space-between}
+    .modal-header h3{font-size:15px;font-weight:700}
+    .modal-close{background:none;border:none;font-size:22px;cursor:pointer;color:var(--gray-text);line-height:1}
+    .modal-body{padding:20px 22px}.modal-footer{padding:13px 22px;border-top:1px solid var(--gray-border);display:flex;justify-content:flex-end;gap:10px}
+    .form-group{margin-bottom:13px}
+    .form-group label{display:block;font-size:12px;font-weight:600;margin-bottom:5px;color:#444}
+    .form-input,.form-select{width:100%;padding:8px 11px;border:1.5px solid var(--gray-border);border-radius:7px;font-size:13px;font-family:inherit;background:white;transition:border-color .2s}
+    .form-input:focus,.form-select:focus{outline:none;border-color:var(--blue)}
+    textarea.form-input{resize:vertical;min-height:72px}
+    .info-box{background:#fffaf0;border:1.5px solid #f5cba7;border-radius:7px;padding:8px 12px;font-size:12px;color:#7d4500;margin-bottom:13px}
+
+    /* MISC */
+    .legend{margin-top:11px;padding:11px 13px;background:white;border-radius:8px;border:1px solid var(--gray-border)}
+    .legend-title{font-size:10px;font-weight:700;color:var(--gray-text);text-transform:uppercase;letter-spacing:.6px;margin-bottom:7px}
+    .legend-grid{display:grid;grid-template-columns:1fr 1fr;gap:5px}
+    .legend-item{display:flex;align-items:center;gap:5px;font-size:11px}
+    .legend-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+    .timestamp{font-size:10.5px;color:var(--gray-text)}
+    .toggle{position:relative;display:inline-block;width:36px;height:20px;flex-shrink:0}
+    .toggle input{opacity:0;width:0;height:0}
+    .toggle-slider{position:absolute;cursor:pointer;inset:0;background:#ccc;border-radius:20px;transition:.3s}
+    .toggle-slider:before{content:'';position:absolute;width:14px;height:14px;left:3px;bottom:3px;background:white;border-radius:50%;transition:.3s}
+    .toggle input:checked+.toggle-slider{background:var(--success)}
+    .toggle input:checked+.toggle-slider:before{transform:translateX(16px)}
+    .tag-inativo{display:inline-block;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:700;background:#f0f0f0;color:#999;margin-left:4px}
+    .empty-state{text-align:center;padding:44px 20px;color:var(--gray-text)}
+    .empty-state .icon{font-size:44px;margin-bottom:10px}
+    .empty-state p{font-size:13px}
+    .toast{position:fixed;bottom:20px;right:20px;padding:10px 18px;border-radius:8px;color:white;font-size:13px;font-weight:600;z-index:9999;opacity:0;transform:translateY(8px);transition:all .3s;pointer-events:none;box-shadow:0 4px 16px rgba(0,0,0,.2)}
+    .toast.show{opacity:1;transform:translateY(0)}.toast.ok{background:var(--success)}.toast.err{background:var(--orange)}
+    .hidden{display:none!important}
+    .group-pill{display:inline-flex;align-items:center;gap:5px;padding:4px 12px;border-radius:20px;font-size:12px;font-weight:700;margin:3px;border:1.5px solid}
+    .gp-fiscal{background:#dbeeff;color:#003d7a;border-color:#b3d4f5}.gp-pessoal{background:#EDE0F7;color:#5a1a8a;border-color:#d0aee8}
+    .gp-contabil{background:#D4EDDA;color:#145a28;border-color:#9fd4af}.gp-societario{background:#fff0db;color:#7d4500;border-color:#f5cba7}
+    @media(max-width:960px){
+      .sidebar{width:54px}.logo-text,.logo-sub,.nav-item span:not(.nav-icon),.s-name,.s-role{display:none}
+      .nav-item{padding:12px;justify-content:center}.main{margin-left:54px}
+      .content-grid{grid-template-columns:1fr}.cards-row{grid-template-columns:repeat(2,1fr)}
+    }
+  </style>
+</head>
+<body>
+
+<!-- LOGIN — visível por padrão via CSS, sem depender de JS para aparecer -->
+<div id="login-screen">
+  <div class="login-box">
+    <div class="login-logo"><span class="ctrl">Control</span><span class="max">max</span></div>
+    <div class="login-sub">GESTÃO DE OBRIGAÇÕES</div>
+    <div class="login-title">Acesse sua conta</div>
+    <div id="login-err" class="login-err"></div>
+    <div class="form-group">
+      <label>E-mail</label>
+      <input type="email" id="inp-email" class="form-input" placeholder="seu@email.com" onkeydown="if(event.key==='Enter')doLogin()">
+    </div>
+    <div class="form-group">
+      <label>Senha</label>
+      <input type="password" id="inp-senha" class="form-input" placeholder="••••••••" onkeydown="if(event.key==='Enter')doLogin()">
+    </div>
+    <button class="btn btn-primary" style="width:100%;padding:10px;font-size:14px;margin-top:4px" onclick="doLogin()">Entrar</button>
+  </div>
+</div>
+
+<!-- APP — oculto até login bem-sucedido -->
+<div id="app-shell">
+  <div class="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-text"><span class="ctrl">Control</span><span class="max">max</span></div>
+      <div class="logo-sub">GESTÃO DE OBRIGAÇÕES</div>
+    </div>
+    <nav class="sidebar-nav">
+      <div class="nav-item active" onclick="showView('dashboard')"><span class="nav-icon">📊</span><span>Dashboard</span></div>
+      <div class="nav-item" onclick="showView('clientes')"><span class="nav-icon">👥</span><span>Clientes</span></div>
+      <div class="nav-item" onclick="showView('usuarios')"><span class="nav-icon">👤</span><span>Usuários</span></div>
+      <div class="nav-item" onclick="showView('obrigacoes')"><span class="nav-icon">📋</span><span>Por Cliente</span></div>
+      <div class="nav-item" onclick="showView('configuracoes')"><span class="nav-icon">⚙️</span><span>Configurações</span></div>
+    </nav>
+    <div class="sidebar-user" onclick="handleLogout()">
+      <div class="s-av" id="s-av">?</div>
+      <div style="flex:1;min-width:0"><div class="s-name" id="s-name">—</div><div class="s-role" id="s-role">Sair</div></div>
+    </div>
+    <div class="sidebar-footer">v3.1 · Controlmax © 2026</div>
+  </div>
+
+  <div class="main">
+    <!-- DASHBOARD -->
+    <div id="view-dashboard">
+      <div class="header">
+        <h1>Dashboard</h1>
+        <div class="month-nav">
+          <button class="btn btn-ghost btn-sm" onclick="changeMonth(-1)">◀</button>
+          <span class="month-label" id="month-label">—</span>
+          <button class="btn btn-ghost btn-sm" onclick="changeMonth(1)">▶</button>
+        </div>
+      </div>
+      <div class="content">
+        <div class="cards-row">
+          <div class="card stat-card blue"><div class="label">Total do Mês</div><div class="value" id="stat-total">0</div><div class="sublabel">obrigações</div></div>
+          <div class="card stat-card orange"><div class="label">Atrasadas</div><div class="value" id="stat-atrasadas">0</div><div class="sublabel">fora do prazo</div></div>
+          <div class="card stat-card yellow"><div class="label">A Vencer</div><div class="value" id="stat-vencer">0</div><div class="sublabel">próximos 3 dias</div></div>
+          <div class="card stat-card green"><div class="label">Concluídas</div><div class="value" id="stat-concluidas">0</div><div class="sublabel">finalizadas</div></div>
+        </div>
+        <div class="content-grid">
+          <div>
+            <div class="calendar-card">
+              <div class="calendar-header">
+                <button onclick="changeMonth(-1)">‹</button>
+                <span class="calendar-title" id="cal-title">—</span>
+                <button onclick="changeMonth(1)">›</button>
+              </div>
+              <div class="cal-grid" id="cal-grid">
+                <div class="cal-day-name">Dom</div><div class="cal-day-name">Seg</div><div class="cal-day-name">Ter</div>
+                <div class="cal-day-name">Qua</div><div class="cal-day-name">Qui</div><div class="cal-day-name">Sex</div><div class="cal-day-name">Sáb</div>
+              </div>
+            </div>
+            <div class="legend">
+              <div class="legend-title">Legenda</div>
+              <div class="legend-grid">
+                <div class="legend-item"><span class="legend-dot" style="background:var(--warning)"></span>Aguardando Docs</div>
+                <div class="legend-item"><span class="legend-dot" style="background:var(--info)"></span>Em Processamento</div>
+                <div class="legend-item"><span class="legend-dot" style="background:var(--purple)"></span>Enviado</div>
+                <div class="legend-item"><span class="legend-dot" style="background:var(--success)"></span>Concluído</div>
+                <div class="legend-item"><span class="legend-dot" style="background:var(--orange)"></span>Atrasado</div>
+              </div>
+            </div>
+          </div>
+          <div class="list-card">
+            <div class="list-header">
+              <h3>Obrigações do Mês</h3>
+              <div class="filters">
+                <input type="text" class="fsearch" id="dash-search" placeholder="🔍 Buscar..." oninput="renderList()">
+                <select class="fsel" id="f-cliente" onchange="renderList()"><option value="">Todos os clientes</option></select>
+                <select class="fsel" id="f-grupo" onchange="renderList()">
+                  <option value="">Todos os grupos</option>
+                  <option value="fiscal">Fiscal</option><option value="pessoal">Depto. Pessoal</option>
+                  <option value="contabil">Contábil</option><option value="societario">Societário</option>
+                </select>
+                <select class="fsel" id="f-status" onchange="renderList()">
+                  <option value="">Todos os status</option>
+                  <option value="aguardando_docs">Aguardando Docs</option><option value="em_processamento">Em Processamento</option>
+                  <option value="enviado">Enviado</option><option value="concluido">Concluído</option><option value="atrasado">Atrasado</option>
+                </select>
+              </div>
+            </div>
+            <div style="overflow-x:auto">
+              <table>
+                <thead><tr>
+                  <th onclick="sortBy('nomeObrigacao')">Obrigação <span id="si-nome">↕</span></th>
+                  <th onclick="sortBy('grupo')">Grupo <span id="si-grupo">↕</span></th>
+                  <th onclick="sortBy('clienteNome')">Cliente <span id="si-cliente">↕</span></th>
+                  <th onclick="sortBy('dataVencimento')">Vencimento <span id="si-data">↑</span></th>
+                  <th onclick="sortBy('status')">Status <span id="si-status">↕</span></th>
+                  <th>Ação</th>
+                </tr></thead>
+                <tbody id="obrigacoes-list"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- CLIENTES -->
+    <div id="view-clientes" class="hidden">
+      <div class="header">
+        <h1>Clientes</h1>
+        <div style="display:flex;gap:8px;align-items:center">
+          <input type="text" class="fsearch" id="client-search" placeholder="🔍 Buscar cliente..." oninput="renderClients()">
+          <button class="btn btn-primary" onclick="openClientModal()">+ Novo Cliente</button>
+        </div>
+      </div>
+      <div class="content"><div class="clients-grid" id="clients-grid"></div></div>
+    </div>
+
+    <!-- USUÁRIOS -->
+    <div id="view-usuarios" class="hidden">
+      <div class="header">
+        <h1>Usuários</h1>
+        <button class="btn btn-primary" id="btn-novo-user" onclick="openUserModal()">+ Novo Usuário</button>
+      </div>
+      <div class="content"><div class="users-grid" id="users-grid"></div></div>
+    </div>
+
+    <!-- POR CLIENTE -->
+    <div id="view-obrigacoes" class="hidden">
+      <div class="header">
+        <h1>Obrigações por Cliente</h1>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          <input type="text" class="fsearch" id="oc-search" placeholder="🔍 Buscar..." oninput="renderClientObligations()">
+          <select class="fsel" id="oc-grupo" onchange="renderClientObligations()">
+            <option value="">Todos os grupos</option>
+            <option value="fiscal">Fiscal</option><option value="pessoal">Depto. Pessoal</option>
+            <option value="contabil">Contábil</option><option value="societario">Societário</option>
+          </select>
+          <select class="fsel" id="oc-status" onchange="renderClientObligations()">
+            <option value="">Todos os status</option>
+            <option value="aguardando_docs">Aguardando Docs</option><option value="em_processamento">Em Processamento</option>
+            <option value="enviado">Enviado</option><option value="concluido">Concluído</option><option value="atrasado">Atrasado</option>
+          </select>
+          <div class="month-nav">
+            <button class="btn btn-ghost btn-sm" onclick="changeMonth(-1)">◀</button>
+            <span class="month-label" id="month-label-2">—</span>
+            <button class="btn btn-ghost btn-sm" onclick="changeMonth(1)">▶</button>
+          </div>
+        </div>
+      </div>
+      <div class="content"><div id="client-obligations-list"></div></div>
+    </div>
+
+    <!-- CONFIGURAÇÕES -->
+    <div id="view-configuracoes" class="hidden">
+      <div class="header"><h1>Configurações</h1></div>
+      <div class="content">
+        <div class="card" style="max-width:700px;margin-bottom:20px">
+          <h3 style="font-size:14px;font-weight:700;margin-bottom:4px">Grupos de Obrigações</h3>
+          <p style="font-size:12px;color:var(--gray-text);margin-bottom:12px">Cada obrigação é vinculada a um grupo para organização e filtros.</p>
+          <div>
+            <span class="group-pill gp-fiscal">📘 Fiscal</span>
+            <span class="group-pill gp-pessoal">👥 Depto. Pessoal</span>
+            <span class="group-pill gp-contabil">📒 Contábil</span>
+            <span class="group-pill gp-societario">🏢 Societário</span>
+          </div>
+        </div>
+        <div class="card" style="max-width:700px;margin-bottom:20px">
+          <h3 style="font-size:14px;font-weight:700;margin-bottom:4px">Obrigações Cadastradas</h3>
+          <p style="font-size:12px;color:var(--gray-text);margin-bottom:14px">Toggle para ativar/inativar. Inativas não entram na geração mensal.</p>
+          <div id="obrigacoes-config-list"></div>
+          <button class="btn btn-ghost" style="margin-top:14px" onclick="openObrigacaoModal()">+ Adicionar Obrigação</button>
+        </div>
+        <div class="card" style="max-width:700px">
+          <h3 style="font-size:14px;font-weight:700;margin-bottom:5px">Gerar Obrigações do Mês</h3>
+          <p style="font-size:12.5px;color:var(--gray-text);margin-bottom:14px">Cria tarefas de todos os clientes com base nas obrigações <strong>ativas</strong>.</p>
+          <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+            <input type="month" id="gen-month" class="form-input" style="width:185px">
+            <button class="btn btn-orange" onclick="generateObligations()">🔄 Gerar Obrigações</button>
+          </div>
+          <p style="font-size:11px;color:var(--gray-text);margin-top:8px">Registros já existentes não serão duplicados.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAIS -->
+<!-- Troca de senha 1º acesso -->
+<div id="modal-pwd" class="modal-overlay hidden">
+  <div class="modal" style="max-width:400px">
+    <div class="modal-header"><h3>🔐 Defina sua nova senha</h3></div>
+    <div class="modal-body">
+      <div class="info-box">⚠️ Primeiro acesso detectado. Defina uma senha pessoal antes de continuar.</div>
+      <div id="pwd-err" class="login-err"></div>
+      <div class="form-group"><label>Nova senha *</label><input type="password" id="pwd-nova" class="form-input" placeholder="Mínimo 6 caracteres"></div>
+      <div class="form-group"><label>Confirmar senha *</label><input type="password" id="pwd-conf" class="form-input" placeholder="Repita a nova senha"></div>
+    </div>
+    <div class="modal-footer"><button class="btn btn-primary" onclick="saveNewPassword()">Salvar e Entrar</button></div>
+  </div>
+</div>
+
+<!-- Cliente -->
+<div id="modal-client" class="modal-overlay hidden">
+  <div class="modal">
+    <div class="modal-header"><h3 id="client-modal-title">Novo Cliente</h3><button class="modal-close" onclick="CM('modal-client')">×</button></div>
+    <div class="modal-body">
+      <input type="hidden" id="client-id">
+      <div class="form-group"><label>Razão Social / Nome *</label><input type="text" id="client-nome" class="form-input"></div>
+      <div class="form-group"><label>CNPJ / CPF</label><input type="text" id="client-cnpj" class="form-input" placeholder="00.000.000/0001-00"></div>
+      <div class="form-group"><label>Regime Tributário</label>
+        <select id="client-regime" class="form-select"><option value="SN">Simples Nacional</option><option value="LP">Lucro Presumido</option></select></div>
+      <div class="form-group"><label>Responsável Interno</label>
+        <select id="client-resp" class="form-select"><option value="">Sem responsável</option></select></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="CM('modal-client')">Cancelar</button>
+      <button class="btn btn-primary" onclick="saveClient()">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Usuário -->
+<div id="modal-user" class="modal-overlay hidden">
+  <div class="modal">
+    <div class="modal-header"><h3 id="user-modal-title">Novo Usuário</h3><button class="modal-close" onclick="CM('modal-user')">×</button></div>
+    <div class="modal-body">
+      <input type="hidden" id="user-id">
+      <div class="form-group"><label>Nome Completo *</label><input type="text" id="user-nome" class="form-input"></div>
+      <div class="form-group"><label>E-mail *</label><input type="email" id="user-email" class="form-input"></div>
+      <div class="form-group">
+        <label>Senha <span id="user-senha-hint" style="font-weight:400;color:var(--gray-text)">(obrigatória)</span></label>
+        <input type="password" id="user-senha" class="form-input" placeholder="Mínimo 6 caracteres">
+      </div>
+      <div class="form-group"><label>Perfil</label>
+        <select id="user-perfil" class="form-select" onchange="toggleMasterInfo()">
+          <option value="master">Master (Acesso Total)</option>
+          <option value="admin">Administrador</option>
+          <option value="contador" selected>Contador</option>
+          <option value="assistente">Assistente</option>
+        </select></div>
+      <div id="master-info" class="info-box hidden">⭐ Usuário Master pode alterar datas de vencimento e acessar configurações avançadas.</div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="CM('modal-user')">Cancelar</button>
+      <button class="btn btn-primary" onclick="saveUser()">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Tarefa -->
+<div id="modal-task" class="modal-overlay hidden">
+  <div class="modal">
+    <div class="modal-header"><h3 id="task-modal-title">Atualizar Obrigação</h3><button class="modal-close" onclick="CM('modal-task')">×</button></div>
+    <div class="modal-body">
+      <input type="hidden" id="task-id">
+      <div id="task-info" style="background:var(--gray-bg);padding:11px 13px;border-radius:8px;margin-bottom:10px;font-size:12.5px;line-height:1.7"></div>
+      <div id="task-gbadge" style="margin-bottom:10px"></div>
+      <div id="task-date-field" class="hidden">
+        <div class="info-box" style="margin-bottom:8px">🔐 Campo exclusivo do usuário Master</div>
+        <div class="form-group"><label>Alterar Data de Vencimento</label><input type="date" id="task-nova-data" class="form-input"></div>
+      </div>
+      <div class="form-group"><label>Status</label>
+        <select id="task-status" class="form-select">
+          <option value="aguardando_docs">Aguardando Documentos</option>
+          <option value="em_processamento">Em Processamento</option>
+          <option value="enviado">Enviado</option><option value="concluido">Concluído</option>
+        </select></div>
+      <div class="form-group"><label>Responsável</label>
+        <select id="task-resp" class="form-select"><option value="">Sem responsável</option></select></div>
+      <div class="form-group"><label>Observação</label>
+        <textarea id="task-obs" class="form-input" placeholder="Pendências, notas..."></textarea></div>
+      <div id="task-hist"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="CM('modal-task')">Cancelar</button>
+      <button class="btn btn-primary" onclick="saveTask()">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Obrigação -->
+<div id="modal-obrig" class="modal-overlay hidden">
+  <div class="modal">
+    <div class="modal-header"><h3>Nova Obrigação</h3><button class="modal-close" onclick="CM('modal-obrig')">×</button></div>
+    <div class="modal-body">
+      <div class="form-group"><label>Nome *</label><input type="text" id="obrig-nome" class="form-input" placeholder="Ex: DCTF Mensal"></div>
+      <div class="form-group"><label>Grupo *</label>
+        <select id="obrig-grupo" class="form-select">
+          <option value="fiscal">📘 Fiscal</option><option value="pessoal">👥 Depto. Pessoal</option>
+          <option value="contabil">📒 Contábil</option><option value="societario">🏢 Societário</option>
+        </select></div>
+      <div class="form-group"><label>Regime</label>
+        <select id="obrig-regime" class="form-select"><option value="SN">Simples Nacional</option><option value="LP">Lucro Presumido</option><option value="AMBOS">Ambos</option></select></div>
+      <div class="form-group"><label>Periodicidade</label>
+        <select id="obrig-period" class="form-select" onchange="toggleMesVenc()">
+          <option value="mensal">Mensal</option><option value="trimestral">Trimestral</option><option value="anual">Anual</option>
+        </select></div>
+      <div id="mes-venc-group" class="form-group hidden"><label>Mês de Vencimento</label>
+        <select id="obrig-mes" class="form-select">
+          <option value="1">Janeiro</option><option value="2">Fevereiro</option><option value="3">Março</option>
+          <option value="4">Abril</option><option value="5">Maio</option><option value="6">Junho</option>
+          <option value="7">Julho</option><option value="8">Agosto</option><option value="9">Setembro</option>
+          <option value="10">Outubro</option><option value="11">Novembro</option><option value="12">Dezembro</option>
+        </select></div>
+      <div class="form-group"><label>Dia de Vencimento *</label>
+        <input type="number" id="obrig-dia" class="form-input" min="1" max="31" placeholder="Ex: 20"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="CM('modal-obrig')">Cancelar</button>
+      <button class="btn btn-primary" onclick="saveObrigacao()">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast" class="toast"></div>
+
+<script>
+'use strict';
+
+// ── CONSTANTES ──────────────────────────────────────────
+const MASTER_SEED = {
+  id:'u_master', nome:'Administrador Controlmax',
+  email:'controlmax.adm@outlook.com', senha:'123456',
+  perfil:'master', primeiroAcesso:true
+};
+const GROUPS = {
+  fiscal:{label:'Fiscal',icon:'📘'}, pessoal:{label:'Depto. Pessoal',icon:'👥'},
+  contabil:{label:'Contábil',icon:'📒'}, societario:{label:'Societário',icon:'🏢'}
+};
+const OBRIG_TEMPLATES = [
+  {id:'das',      nome:'DAS – Simples Nacional', grupo:'fiscal',     regime:'SN', periodicidade:'mensal',     diaVencimento:20,ativo:true},
+  {id:'pgdas',    nome:'PGDAS-D',               grupo:'fiscal',     regime:'SN', periodicidade:'mensal',     diaVencimento:20,ativo:true},
+  {id:'defis',    nome:'DEFIS',                 grupo:'fiscal',     regime:'SN', periodicidade:'anual',      diaVencimento:31,mesVencimento:3, ativo:true},
+  {id:'dasn',     nome:'DASN-SIMEI',            grupo:'fiscal',     regime:'SN', periodicidade:'anual',      diaVencimento:31,mesVencimento:5, ativo:true},
+  {id:'esoc_sn',  nome:'eSocial',               grupo:'pessoal',    regime:'SN', periodicidade:'mensal',     diaVencimento:7, ativo:true},
+  {id:'folha_sn', nome:'Folha de Pagamento',    grupo:'pessoal',    regime:'SN', periodicidade:'mensal',     diaVencimento:5, ativo:true},
+  {id:'fgts_sn',  nome:'FGTS',                  grupo:'pessoal',    regime:'SN', periodicidade:'mensal',     diaVencimento:7, ativo:true},
+  {id:'caged_sn', nome:'CAGED',                 grupo:'pessoal',    regime:'SN', periodicidade:'mensal',     diaVencimento:7, ativo:true},
+  {id:'rais_sn',  nome:'RAIS',                  grupo:'pessoal',    regime:'SN', periodicidade:'anual',      diaVencimento:28,mesVencimento:2, ativo:true},
+  {id:'dctf',     nome:'DCTF',                  grupo:'fiscal',     regime:'LP', periodicidade:'mensal',     diaVencimento:15,ativo:true},
+  {id:'sped_f',   nome:'SPED Fiscal',           grupo:'contabil',   regime:'LP', periodicidade:'mensal',     diaVencimento:10,ativo:true},
+  {id:'sped_c',   nome:'SPED Contribuições',    grupo:'contabil',   regime:'LP', periodicidade:'mensal',     diaVencimento:10,ativo:true},
+  {id:'ecf',      nome:'ECF',                   grupo:'contabil',   regime:'LP', periodicidade:'anual',      diaVencimento:31,mesVencimento:7, ativo:true},
+  {id:'ecd',      nome:'ECD',                   grupo:'contabil',   regime:'LP', periodicidade:'anual',      diaVencimento:31,mesVencimento:5, ativo:true},
+  {id:'irpj',     nome:'IRPJ Trimestral',       grupo:'fiscal',     regime:'LP', periodicidade:'trimestral', diaVencimento:30,ativo:true},
+  {id:'csll',     nome:'CSLL Trimestral',       grupo:'fiscal',     regime:'LP', periodicidade:'trimestral', diaVencimento:30,ativo:true},
+  {id:'pis',      nome:'PIS',                   grupo:'fiscal',     regime:'LP', periodicidade:'mensal',     diaVencimento:25,ativo:true},
+  {id:'cofins',   nome:'COFINS',                grupo:'fiscal',     regime:'LP', periodicidade:'mensal',     diaVencimento:25,ativo:true},
+  {id:'darf',     nome:'DARF',                  grupo:'fiscal',     regime:'LP', periodicidade:'mensal',     diaVencimento:20,ativo:true},
+  {id:'esoc_lp',  nome:'eSocial',               grupo:'pessoal',    regime:'LP', periodicidade:'mensal',     diaVencimento:7, ativo:true},
+  {id:'folha_lp', nome:'Folha de Pagamento',    grupo:'pessoal',    regime:'LP', periodicidade:'mensal',     diaVencimento:5, ativo:true},
+  {id:'fgts_lp',  nome:'FGTS',                  grupo:'pessoal',    regime:'LP', periodicidade:'mensal',     diaVencimento:7, ativo:true},
+  {id:'gps',      nome:'GPS / INSS',            grupo:'fiscal',     regime:'LP', periodicidade:'mensal',     diaVencimento:20,ativo:true},
+  {id:'caged_lp', nome:'CAGED',                 grupo:'pessoal',    regime:'LP', periodicidade:'mensal',     diaVencimento:7, ativo:true},
+  {id:'rais_lp',  nome:'RAIS',                  grupo:'pessoal',    regime:'LP', periodicidade:'anual',      diaVencimento:28,mesVencimento:2, ativo:true},
+  {id:'contrato', nome:'Alteração Contratual',  grupo:'societario', regime:'AMBOS',periodicidade:'anual',   diaVencimento:31,mesVencimento:12,ativo:true},
+  {id:'livros',   nome:'Livros Contábeis',      grupo:'contabil',   regime:'AMBOS',periodicidade:'anual',   diaVencimento:31,mesVencimento:3, ativo:true},
+];
+const MONTHS = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+const SL = {aguardando_docs:'Aguardando Docs',em_processamento:'Em Processamento',enviado:'Enviado',concluido:'Concluído',atrasado:'Atrasado'};
+const SC = {aguardando_docs:'yellow',em_processamento:'blue',enviado:'purple',concluido:'green',atrasado:'red'};
+
+// ── ESTADO ──────────────────────────────────────────────
+let ST = {clients:[],tasks:[],obligations:[],users:[]};
+let curUser=null, curY=new Date().getFullYear(), curM=new Date().getMonth()+1;
+let sCol='dataVencimento', sDir=1;
+let eCI=null, eUI=null, eTI=null;
+
+// ── UTILS ────────────────────────────────────────────────
+const pad   = n => String(n).padStart(2,'0');
+const fmtD  = s => { if(!s) return '—'; const [y,m,d]=s.split('-'); return `${d}/${m}/${y}`; };
+const fmtDT = iso => { if(!iso) return '—'; const d=new Date(iso); return `${pad(d.getDate())}/${pad(d.getMonth()+1)}/${d.getFullYear()} às ${pad(d.getHours())}:${pad(d.getMinutes())}`; };
+const ini   = nome => nome?nome.trim().split(/\s+/).slice(0,2).map(n=>n[0].toUpperCase()).join(''):'?';
+const dTo   = s => { const t=new Date();t.setHours(0,0,0,0);const d=new Date(s);d.setHours(0,0,0,0);return Math.round((d-t)/864e5); };
+const byId  = (arr,id) => arr.find(x=>x.id===id);
+const isMst = () => curUser&&curUser.perfil==='master';
+const isAdm = () => curUser&&(curUser.perfil==='master'||curUser.perfil==='admin');
+const CM    = id => document.getElementById(id).classList.add('hidden');
+const gbadge= g => { const x=GROUPS[g]; return x?`<span class="badge g-${g}">${x.icon} ${x.label}</span>`:''; };
+function toast(msg,t='ok'){const e=document.getElementById('toast');e.textContent=msg;e.className=`toast ${t} show`;setTimeout(()=>e.classList.remove('show'),3200);}
+
+// ── STORAGE ──────────────────────────────────────────────
+function loadST() {
+  try {
+    ST.clients     = JSON.parse(localStorage.getItem('cm_clients')    ||'[]');
+    ST.tasks       = JSON.parse(localStorage.getItem('cm_tasks')      ||'[]');
+    ST.obligations = JSON.parse(localStorage.getItem('cm_obligations')||JSON.stringify(OBRIG_TEMPLATES));
+    ST.users       = JSON.parse(localStorage.getItem('cm_users')      ||'[]');
+  } catch(e) {
+    ST = {clients:[],tasks:[],obligations:JSON.parse(JSON.stringify(OBRIG_TEMPLATES)),users:[]};
+  }
+  // Normalizar obrigações
+  ST.obligations = ST.obligations.map(o=>({grupo:'fiscal',...o,ativo:o.ativo!==false}));
+  // Garantir master
+  const mi = ST.users.findIndex(u=>u.id==='u_master');
+  if (mi===-1) {
+    ST.users.unshift({...MASTER_SEED});
+  } else {
+    ST.users[mi] = {
+      ...MASTER_SEED,
+      senha: ST.users[mi].senha || MASTER_SEED.senha,
+      primeiroAcesso: ST.users[mi].primeiroAcesso !== undefined ? ST.users[mi].primeiroAcesso : true
+    };
+  }
+  // Clientes demo
+  if (!ST.clients.length) {
+    ST.clients = [
+      {id:'demo1',nome:'Comércio Silva Ltda',      cnpj:'12.345.678/0001-90',regime:'SN',responsavelId:null},
+      {id:'demo2',nome:'Serviços Costa S/A',        cnpj:'98.765.432/0001-10',regime:'LP',responsavelId:null},
+      {id:'demo3',nome:'Distribuidora Oliveira ME', cnpj:'11.222.333/0001-44',regime:'SN',responsavelId:null},
+    ];
+  }
+}
+function save() {
+  localStorage.setItem('cm_clients',    JSON.stringify(ST.clients));
+  localStorage.setItem('cm_tasks',      JSON.stringify(ST.tasks));
+  localStorage.setItem('cm_obligations',JSON.stringify(ST.obligations));
+  localStorage.setItem('cm_users',      JSON.stringify(ST.users));
+}
+
+// ── LOGIN ────────────────────────────────────────────────
+function doLogin() {
+  const emailEl = document.getElementById('inp-email');
+  const senhaEl = document.getElementById('inp-senha');
+  const errEl   = document.getElementById('login-err');
+  const email   = (emailEl ? emailEl.value : '').trim().toLowerCase();
+  const senha   = senhaEl ? senhaEl.value : '';
+
+  errEl.style.display = 'none';
+  errEl.textContent   = '';
+
+  if (!email || !senha) {
+    errEl.textContent   = '❌ Preencha e-mail e senha.';
+    errEl.style.display = 'block';
+    return;
+  }
+
+  // Sempre recarregar storage para pegar usuários recém-cadastrados
+  loadST();
+
+  const user = ST.users.find(function(u) {
+    return u.email && u.email.trim().toLowerCase() === email && u.senha === senha;
+  });
+
+  if (!user) {
+    errEl.textContent   = '❌ E-mail ou senha inválidos.';
+    errEl.style.display = 'block';
+    return;
+  }
+
+  curUser = user;
+
+  if (user.primeiroAcesso) {
+    // Esconder login-screen ANTES de mostrar modal para evitar conflito de z-index
+    document.getElementById('login-screen').style.display = 'none';
+    document.getElementById('app-shell').style.display    = 'block';
+    renderSidebar();
+    // Abrir modal de troca de senha
+    document.getElementById('pwd-nova').value = '';
+    document.getElementById('pwd-conf').value = '';
+    document.getElementById('pwd-err').style.display = 'none';
+    document.getElementById('modal-pwd').classList.remove('hidden');
+    return;
+  }
+
+  enterApp();
+}
+
+function saveNewPassword() {
+  const s1 = document.getElementById('pwd-nova').value;
+  const s2 = document.getElementById('pwd-conf').value;
+  const er = document.getElementById('pwd-err');
+  er.style.display='none';
+  if (!s1||s1.length<6){er.textContent='A senha deve ter pelo menos 6 caracteres.';er.style.display='block';return;}
+  if (s1!==s2){er.textContent='As senhas não coincidem.';er.style.display='block';return;}
+  const idx = ST.users.findIndex(u=>u.id===curUser.id);
+  ST.users[idx].senha=s1; ST.users[idx].primeiroAcesso=false;
+  curUser=ST.users[idx]; save();
+  document.getElementById('modal-pwd').classList.add('hidden'); enterApp(); toast('✅ Senha definida! Bem-vindo(a).');
+}
+
+function enterApp() {
+  sessionStorage.setItem('cm_uid', curUser.id);
+  document.getElementById('login-screen').style.display = 'none';
+  document.getElementById('app-shell').style.display    = 'block';
+  renderSidebar();
+  updateStatuses();
+  showView('dashboard');
+}
+
+function handleLogout() {
+  if(!confirm('Deseja sair do sistema?'))return;
+  curUser=null; sessionStorage.removeItem('cm_uid');
+  document.getElementById('app-shell').style.display='none';
+  document.getElementById('login-screen').style.display='flex';
+  document.getElementById('inp-email').value='';
+  document.getElementById('inp-senha').value='';
+  document.getElementById('login-err').style.display='none';
+}
+
+function renderSidebar() {
+  if(!curUser)return;
+  const av=document.getElementById('s-av');
+  av.textContent=ini(curUser.nome);
+  av.style.background=isMst()?'var(--orange)':'var(--blue)';
+  document.getElementById('s-name').textContent=curUser.nome.split(' ')[0]+(isMst()?' ⭐':'');
+  document.getElementById('s-role').textContent=isMst()?'Master · Clique para sair':`${curUser.perfil} · Sair`;
+}
+
+// ── NAVEGAÇÃO ────────────────────────────────────────────
+function showView(v) {
+  ['dashboard','clientes','usuarios','obrigacoes','configuracoes'].forEach(x=>{
+    document.getElementById('view-'+x).classList.toggle('hidden',x!==v);
+  });
+  document.querySelectorAll('.nav-item').forEach(el=>el.classList.toggle('active',(el.getAttribute('onclick')||'').includes("'"+v+"'")));
+  if(v==='dashboard')   renderDashboard();
+  if(v==='clientes')    renderClients();
+  if(v==='usuarios')    renderUsers();
+  if(v==='obrigacoes')  renderClientObligations();
+  if(v==='configuracoes')renderConfig();
+}
+
+function changeMonth(d) {
+  curM+=d; if(curM>12){curM=1;curY++;}if(curM<1){curM=12;curY--;}
+  const l=`${MONTHS[curM-1]} ${curY}`;
+  document.getElementById('month-label').textContent=l;
+  const m2=document.getElementById('month-label-2');if(m2)m2.textContent=l;
+  renderDashboard(); renderClientObligations();
+}
+
+// ── STATUS ───────────────────────────────────────────────
+function updateStatuses() {
+  const today=new Date();today.setHours(0,0,0,0);let ch=false;
+  ST.tasks.forEach(t=>{
+    if(t.status!=='concluido'&&t.status!=='enviado'){
+      const due=new Date(t.dataVencimento);due.setHours(0,0,0,0);
+      if(due<today&&t.status!=='atrasado'){t.status='atrasado';ch=true;}
+    }
+  });
+  if(ch)save();
+}
+
+// ── DASHBOARD ────────────────────────────────────────────
+function renderDashboard() {
+  updateStatuses();
+  const l=`${MONTHS[curM-1]} ${curY}`;
+  document.getElementById('month-label').textContent=l;
+  document.getElementById('cal-title').textContent=l;
+  const tasks=ST.tasks.filter(t=>t.ano===curY&&t.mes===curM);
+  document.getElementById('stat-total').textContent=tasks.length;
+  document.getElementById('stat-atrasadas').textContent=tasks.filter(t=>t.status==='atrasado').length;
+  document.getElementById('stat-concluidas').textContent=tasks.filter(t=>t.status==='concluido').length;
+  document.getElementById('stat-vencer').textContent=tasks.filter(t=>{if(t.status==='concluido'||t.status==='atrasado')return false;const d=dTo(t.dataVencimento);return d>=0&&d<=3;}).length;
+  renderCalendar(); fillClientFilter(); renderList();
+}
+
+function renderCalendar() {
+  const grid=document.getElementById('cal-grid');
+  grid.querySelectorAll('.cal-day').forEach(e=>e.remove());
+  const fd=new Date(curY,curM-1,1).getDay(), ld=new Date(curY,curM,0).getDate(), pl=new Date(curY,curM-1,0).getDate();
+  const today=new Date();today.setHours(0,0,0,0);
+  const tasks=ST.tasks.filter(t=>t.ano===curY&&t.mes===curM);
+  const bd={};tasks.forEach(t=>{const d=parseInt(t.dataVencimento.split('-')[2]);(bd[d]=bd[d]||[]).push(t);});
+  const mk=(n,cls,day)=>{
+    const el=document.createElement('div');el.className='cal-day'+(cls?' '+cls:'');
+    const b=(bd[day]||[]).map(t=>`<span class="cal-badge cb-${SC[t.status]||'gray'}"></span>`).join('');
+    el.innerHTML=`<div class="cal-day-num">${n}</div><div class="cal-badges">${b}</div>`;grid.appendChild(el);
+  };
+  for(let i=0;i<fd;i++)mk(pl-fd+1+i,'other-month');
+  for(let d=1;d<=ld;d++){const dt=new Date(curY,curM-1,d);dt.setHours(0,0,0,0);mk(d,dt.getTime()===today.getTime()?'today':'',d);}
+  const rem=(fd+ld)%7;if(rem)for(let i=1;i<=7-rem;i++)mk(i,'other-month');
+}
+
+function fillClientFilter() {
+  const sel=document.getElementById('f-cliente'),cur=sel.value;
+  sel.innerHTML='<option value="">Todos os clientes</option>';
+  ST.clients.forEach(c=>{const o=document.createElement('option');o.value=c.id;o.textContent=c.nome;sel.appendChild(o);});
+  sel.value=cur;
+}
+
+function sortBy(col) {
+  if(sCol===col)sDir*=-1;else{sCol=col;sDir=1;}
+  [{col:'nomeObrigacao',si:'si-nome'},{col:'grupo',si:'si-grupo'},{col:'clienteNome',si:'si-cliente'},
+   {col:'dataVencimento',si:'si-data'},{col:'status',si:'si-status'}].forEach(x=>{
+    const el=document.getElementById(x.si);
+    if(el)el.textContent=x.col===sCol?(sDir===1?'↑':'↓'):'↕';
+  });
+  renderList();
+}
+
+function renderList() {
+  const fC=(document.getElementById('f-cliente')||{}).value||'';
+  const fG=(document.getElementById('f-grupo')||{}).value||'';
+  const fS=(document.getElementById('f-status')||{}).value||'';
+  const fQ=((document.getElementById('dash-search')||{}).value||'').toLowerCase();
+  const tbody=document.getElementById('obrigacoes-list');
+  let tasks=ST.tasks.filter(t=>t.ano===curY&&t.mes===curM).map(t=>({...t,
+    clienteNome:(byId(ST.clients,t.clienteId)||{}).nome||'—',
+    grupo:(byId(ST.obligations,t.obrigacaoId)||{}).grupo||'fiscal'
+  }));
+  if(fC)tasks=tasks.filter(t=>t.clienteId===fC);
+  if(fG)tasks=tasks.filter(t=>t.grupo===fG);
+  if(fS)tasks=tasks.filter(t=>t.status===fS);
+  if(fQ)tasks=tasks.filter(t=>t.nomeObrigacao.toLowerCase().includes(fQ)||t.clienteNome.toLowerCase().includes(fQ));
+  tasks.sort((a,b)=>{const av=a[sCol]||'',bv=b[sCol]||'';return av<bv?-sDir:av>bv?sDir:0;});
+  if(!tasks.length){tbody.innerHTML=`<tr><td colspan="6" style="text-align:center;padding:28px;color:var(--gray-text)">Nenhuma obrigação encontrada.</td></tr>`;return;}
+  tbody.innerHTML=tasks.map(t=>`<tr>
+    <td style="font-weight:600">${t.nomeObrigacao}</td>
+    <td>${gbadge(t.grupo)}</td>
+    <td style="font-size:12px">${t.clienteNome}</td>
+    <td class="${t.status==='atrasado'?'venc-late':''}">${fmtD(t.dataVencimento)}</td>
+    <td><span class="badge s-${t.status}">${SL[t.status]||t.status}</span></td>
+    <td><button class="btn btn-ghost btn-sm" onclick="openTaskModal('${t.id}')">Atualizar</button></td>
+  </tr>`).join('');
+}
+
+// ── CLIENTES ─────────────────────────────────────────────
+function renderClients() {
+  const grid=document.getElementById('clients-grid');
+  const q=((document.getElementById('client-search')||{}).value||'').toLowerCase();
+  let cl=ST.clients.filter(c=>!q||c.nome.toLowerCase().includes(q)||(c.cnpj||'').includes(q));
+  if(!cl.length){grid.innerHTML=`<div style="grid-column:1/-1"><div class="empty-state"><div class="icon">👥</div><p>${q?'Nenhum encontrado.':'Nenhum cliente cadastrado.'}</p></div></div>`;return;}
+  const tasks=ST.tasks.filter(t=>t.ano===curY&&t.mes===curM);
+  grid.innerHTML=cl.map(c=>{
+    const ct=tasks.filter(t=>t.clienteId===c.id),done=ct.filter(t=>t.status==='concluido').length,late=ct.filter(t=>t.status==='atrasado').length;
+    return`<div class="client-card" onclick="openClientModal('${c.id}')">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start">
+        <div><div style="font-size:14px;font-weight:700;margin-bottom:3px">${c.nome}</div><div style="font-size:11px;color:var(--gray-text)">${c.cnpj||'Sem CNPJ'}</div></div>
+        <button class="btn btn-danger btn-xs" onclick="event.stopPropagation();deleteClient('${c.id}')">🗑</button>
+      </div>
+      <span class="badge r-${c.regime}" style="margin-top:8px;margin-bottom:10px">${c.regime==='SN'?'Simples Nacional':'Lucro Presumido'}</span>
+      <div style="display:flex;gap:8px;padding-top:11px;border-top:1px solid var(--gray-border)">
+        <div style="flex:1;text-align:center"><div style="font-size:19px;font-weight:800;color:var(--blue)">${ct.length}</div><div style="font-size:10px;color:var(--gray-text)">Obrigações</div></div>
+        <div style="flex:1;text-align:center"><div style="font-size:19px;font-weight:800;color:var(--success)">${done}</div><div style="font-size:10px;color:var(--gray-text)">Concluídas</div></div>
+        <div style="flex:1;text-align:center"><div style="font-size:19px;font-weight:800;color:var(--orange)">${late}</div><div style="font-size:10px;color:var(--gray-text)">Atrasadas</div></div>
+      </div>
+    </div>`;}).join('');
+}
+function openClientModal(id=null){
+  eCI=id;
+  document.getElementById('client-modal-title').textContent=id?'Editar Cliente':'Novo Cliente';
+  document.getElementById('client-id').value=id||'';
+  const sel=document.getElementById('client-resp');
+  sel.innerHTML='<option value="">Sem responsável</option>';
+  ST.users.forEach(u=>{const o=document.createElement('option');o.value=u.id;o.textContent=`${u.nome} (${u.perfil})`;sel.appendChild(o);});
+  if(id){const c=byId(ST.clients,id);document.getElementById('client-nome').value=c.nome;document.getElementById('client-cnpj').value=c.cnpj||'';document.getElementById('client-regime').value=c.regime;sel.value=c.responsavelId||'';}
+  else{document.getElementById('client-nome').value='';document.getElementById('client-cnpj').value='';document.getElementById('client-regime').value='SN';sel.value='';}
+  document.getElementById('modal-client').classList.remove('hidden');
+}
+function saveClient(){
+  const nome=document.getElementById('client-nome').value.trim();
+  if(!nome){toast('Informe o nome do cliente','err');return;}
+  const data={nome,cnpj:document.getElementById('client-cnpj').value.trim(),regime:document.getElementById('client-regime').value,responsavelId:document.getElementById('client-resp').value||null};
+  if(eCI){const idx=ST.clients.findIndex(c=>c.id===eCI);ST.clients[idx]={...ST.clients[idx],...data};toast('Cliente atualizado!');}
+  else{ST.clients.push({id:`c_${Date.now()}`,...data});toast('Cliente cadastrado!');}
+  save();CM('modal-client');renderClients();
+}
+function deleteClient(id){if(!confirm('Remover este cliente e todas suas obrigações?'))return;ST.clients=ST.clients.filter(c=>c.id!==id);ST.tasks=ST.tasks.filter(t=>t.clienteId!==id);save();renderClients();toast('Cliente removido.');}
+
+// ── USUÁRIOS ─────────────────────────────────────────────
+function renderUsers(){
+  const grid=document.getElementById('users-grid');
+  const btn=document.getElementById('btn-novo-user');
+  if(btn)btn.style.display=isAdm()?'':'none';
+  const PL={master:'Master',admin:'Administrador',contador:'Contador',assistente:'Assistente'};
+  const tasks=ST.tasks.filter(t=>t.ano===curY&&t.mes===curM);
+  if(!ST.users.length){grid.innerHTML=`<div style="grid-column:1/-1"><div class="empty-state"><div class="icon">👤</div><p>Nenhum usuário.</p></div></div>`;return;}
+  grid.innerHTML=ST.users.map(u=>{
+    const isMU=u.perfil==='master',cl=ST.clients.filter(c=>c.responsavelId===u.id).length,tf=tasks.filter(t=>t.usuarioId===u.id).length,canDel=isMst()&&u.id!=='u_master';
+    return`<div class="user-card ${isMU?'master-card':''}" onclick="openUserModal('${u.id}')">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start">
+        <div class="u-av ${isMU?'master':''}">${ini(u.nome)}</div>
+        ${canDel?`<button class="btn btn-danger btn-xs" onclick="event.stopPropagation();deleteUser('${u.id}')">🗑</button>`:''}
+      </div>
+      <div style="font-size:14px;font-weight:700;margin-bottom:2px">${u.nome}${isMU?'<span class="master-badge">MASTER</span>':''}</div>
+      <div style="font-size:11.5px;color:var(--gray-text);margin-bottom:6px">${u.email||'Sem e-mail'}</div>
+      <div style="display:flex;gap:5px;flex-wrap:wrap;align-items:center;margin-bottom:8px">
+        <span class="perfil-tag perfil-${u.perfil}">${PL[u.perfil]||u.perfil}</span>
+        ${u.primeiroAcesso?'<span style="background:#fff0db;color:#7d4500;border:1px solid #f5cba7;padding:2px 7px;border-radius:10px;font-size:9px;font-weight:700">⚠️ Aguarda 1º acesso</span>':''}
+      </div>
+      <div style="display:flex;gap:16px;padding-top:10px;border-top:1px solid var(--gray-border)">
+        <div><div style="font-size:18px;font-weight:800;color:var(--blue)">${cl}</div><div style="font-size:10px;color:var(--gray-text)">Clientes</div></div>
+        <div><div style="font-size:18px;font-weight:800;color:var(--purple)">${tf}</div><div style="font-size:10px;color:var(--gray-text)">Tarefas/mês</div></div>
+      </div>
+    </div>`;}).join('');
+}
+function toggleMasterInfo(){document.getElementById('master-info').classList.toggle('hidden',document.getElementById('user-perfil').value!=='master');}
+function openUserModal(id=null){
+  if(!isAdm()){toast('Sem permissão para esta ação','err');return;}
+  eUI=id;
+  document.getElementById('user-modal-title').textContent=id?'Editar Usuário':'Novo Usuário';
+  document.getElementById('user-id').value=id||'';
+  document.getElementById('user-senha').value='';
+  document.getElementById('user-senha-hint').textContent=id?'(deixe em branco para manter)':'(obrigatória)';
+  if(id){const u=byId(ST.users,id);document.getElementById('user-nome').value=u.nome;document.getElementById('user-email').value=u.email||'';document.getElementById('user-perfil').value=u.perfil;}
+  else{document.getElementById('user-nome').value='';document.getElementById('user-email').value='';document.getElementById('user-perfil').value='contador';}
+  toggleMasterInfo();
+  document.getElementById('modal-user').classList.remove('hidden');
+}
+function saveUser(){
+  const nome=document.getElementById('user-nome').value.trim();
+  const email=document.getElementById('user-email').value.trim();
+  const senha=document.getElementById('user-senha').value;
+  const perfil=document.getElementById('user-perfil').value;
+  if(!nome){toast('Informe o nome','err');return;}
+  if(!email){toast('Informe o e-mail','err');return;}
+  if(eUI){
+    const idx=ST.users.findIndex(u=>u.id===eUI);
+    ST.users[idx].nome=nome;ST.users[idx].email=email;ST.users[idx].perfil=perfil;
+    if(senha){if(senha.length<6){toast('Senha deve ter mínimo 6 caracteres','err');return;}ST.users[idx].senha=senha;ST.users[idx].primeiroAcesso=false;}
+    if(curUser&&curUser.id===eUI){curUser={...ST.users[idx]};renderSidebar();}
+    toast('Usuário atualizado!');
+  } else {
+    if(!senha||senha.length<6){toast('Informe uma senha com mínimo 6 caracteres','err');return;}
+    if(ST.users.find(u=>u.email&&u.email.toLowerCase()===email.toLowerCase())){toast('E-mail já cadastrado','err');return;}
+    ST.users.push({id:`u_${Date.now()}`,nome,email,senha,perfil,primeiroAcesso:true});
+    toast('Usuário cadastrado! Deverá trocar a senha no 1º acesso.');
+  }
+  save();CM('modal-user');renderUsers();
+}
+function deleteUser(id){
+  if(id==='u_master'){toast('O usuário Master não pode ser removido','err');return;}
+  if(!confirm('Remover este usuário?'))return;
+  ST.users=ST.users.filter(u=>u.id!==id);
+  ST.clients.forEach(c=>{if(c.responsavelId===id)c.responsavelId=null;});
+  ST.tasks.forEach(t=>{if(t.usuarioId===id)t.usuarioId=null;});
+  save();renderUsers();toast('Usuário removido.');
+}
+
+// ── TAREFAS ──────────────────────────────────────────────
+function openTaskModal(taskId){
+  const task=byId(ST.tasks,taskId);if(!task)return;
+  eTI=taskId;
+  const c=byId(ST.clients,task.clienteId),u=byId(ST.users,task.usuarioId),ob=byId(ST.obligations,task.obrigacaoId);
+  document.getElementById('task-id').value=taskId;
+  document.getElementById('task-modal-title').textContent=task.nomeObrigacao;
+  document.getElementById('task-info').innerHTML=`<strong>${c?.nome||'—'}</strong> &nbsp;·&nbsp; Vencimento: <strong>${fmtD(task.dataVencimento)}</strong>`+(task.dataAtualizacao?`<br><span class="timestamp">🕐 Atualizado: ${fmtDT(task.dataAtualizacao)}${u?' · '+u.nome:''}</span>`:'');
+  document.getElementById('task-gbadge').innerHTML=ob?gbadge(ob.grupo):'';
+  const df=document.getElementById('task-date-field');
+  if(isMst()){df.classList.remove('hidden');document.getElementById('task-nova-data').value=task.dataVencimento||'';}
+  else df.classList.add('hidden');
+  document.getElementById('task-status').value=task.status==='atrasado'?'aguardando_docs':task.status;
+  document.getElementById('task-obs').value=task.obs||'';
+  const sel=document.getElementById('task-resp');
+  sel.innerHTML='<option value="">Sem responsável</option>';
+  ST.users.forEach(uu=>{const o=document.createElement('option');o.value=uu.id;o.textContent=`${uu.nome} (${uu.perfil})`;sel.appendChild(o);});
+  sel.value=task.usuarioId||'';
+  const hist=document.getElementById('task-hist');
+  if(task.historico&&task.historico.length){
+    hist.innerHTML=`<div style="font-size:10.5px;font-weight:700;color:var(--gray-text);margin:14px 0 6px;text-transform:uppercase;letter-spacing:.5px">Histórico</div>`+
+      task.historico.slice().reverse().slice(0,5).map(h=>`<div style="font-size:11.5px;padding:6px 0;border-bottom:1px solid var(--gray-border);display:flex;justify-content:space-between;gap:8px"><div><span class="badge s-${h.status}">${SL[h.status]||h.status}</span>${h.obs?` <span style="color:var(--gray-text);font-size:11px">— ${h.obs}</span>`:''}</div><span class="timestamp" style="white-space:nowrap">🕐 ${fmtDT(h.data)}${h.usuario?' · '+h.usuario:''}</span></div>`).join('');
+  } else hist.innerHTML='';
+  document.getElementById('modal-task').classList.remove('hidden');
+}
+function saveTask(){
+  const task=byId(ST.tasks,eTI);if(!task)return;
+  const ns=document.getElementById('task-status').value,no=document.getElementById('task-obs').value.trim(),nu=document.getElementById('task-resp').value||null,ag=new Date().toISOString(),u=byId(ST.users,nu);
+  if(isMst()){const nd=document.getElementById('task-nova-data').value;if(nd&&nd!==task.dataVencimento)task.dataVencimento=nd;}
+  if(!task.historico)task.historico=[];
+  task.historico.push({status:ns,obs:no,data:ag,usuarioId:nu,usuario:u?.nome||null});
+  task.status=ns;task.obs=no;task.usuarioId=nu;task.dataAtualizacao=ag;
+  const today=new Date();today.setHours(0,0,0,0);const due=new Date(task.dataVencimento);due.setHours(0,0,0,0);
+  if(due<today&&task.status!=='concluido'&&task.status!=='enviado')task.status='atrasado';
+  save();CM('modal-task');renderDashboard();renderClientObligations();toast('Obrigação atualizada!');
+}
+
+// ── OBRIGAÇÕES POR CLIENTE ───────────────────────────────
+function renderClientObligations(){
+  const l=`${MONTHS[curM-1]} ${curY}`;
+  const m2=document.getElementById('month-label-2');if(m2)m2.textContent=l;
+  const container=document.getElementById('client-obligations-list');
+  const fG=(document.getElementById('oc-grupo')||{}).value||'',fS=(document.getElementById('oc-status')||{}).value||'';
+  const fQ=((document.getElementById('oc-search')||{}).value||'').toLowerCase();
+  if(!ST.clients.length){container.innerHTML=`<div class="empty-state"><div class="icon">👥</div><p>Cadastre clientes primeiro.</p></div>`;return;}
+  const allT=ST.tasks.filter(t=>t.ano===curY&&t.mes===curM);
+  if(!allT.length){container.innerHTML=`<div class="empty-state"><div class="icon">📭</div><p>Nenhuma obrigação gerada para este mês.</p><p style="font-size:12px;margin-top:6px">Vá em <strong>Configurações → Gerar Obrigações</strong>.</p></div>`;return;}
+  const av=u=>u?`<span style="display:inline-flex;align-items:center;gap:4px"><span style="width:20px;height:20px;border-radius:50%;background:var(--blue);color:white;font-size:8px;font-weight:700;display:flex;align-items:center;justify-content:center">${ini(u.nome)}</span><span style="font-size:12px">${u.nome.split(' ')[0]}</span></span>`:'<span style="color:var(--gray-text);font-size:12px">—</span>';
+  let has=false;
+  const html=ST.clients.map(c=>{
+    let tasks=allT.filter(t=>t.clienteId===c.id);
+    if(fG)tasks=tasks.filter(t=>(byId(ST.obligations,t.obrigacaoId)||{}).grupo===fG);
+    if(fS)tasks=tasks.filter(t=>t.status===fS);
+    if(fQ)tasks=tasks.filter(t=>t.nomeObrigacao.toLowerCase().includes(fQ));
+    if(!tasks.length)return'';has=true;
+    const done=tasks.filter(t=>t.status==='concluido').length;
+    return`<div class="list-card" style="margin-bottom:14px">
+      <div class="list-header"><div><h3>${c.nome}</h3><span class="badge r-${c.regime}" style="margin-top:4px">${c.regime==='SN'?'Simples Nacional':'Lucro Presumido'}</span></div><span style="font-size:12.5px;color:var(--gray-text)">${done}/${tasks.length} concluídas</span></div>
+      <div style="overflow-x:auto"><table><thead><tr><th>Obrigação</th><th>Grupo</th><th>Vencimento</th><th>Responsável</th><th>Status</th><th>Atualizado</th><th></th></tr></thead><tbody>
+      ${tasks.sort((a,b)=>a.dataVencimento.localeCompare(b.dataVencimento)).map(t=>{const u=byId(ST.users,t.usuarioId),ob=byId(ST.obligations,t.obrigacaoId);return`<tr><td style="font-weight:600">${t.nomeObrigacao}</td><td>${ob?gbadge(ob.grupo):''}</td><td class="${t.status==='atrasado'?'venc-late':''}">${fmtD(t.dataVencimento)}</td><td>${av(u)}</td><td><span class="badge s-${t.status}">${SL[t.status]||t.status}</span></td><td><span class="timestamp">🕐 ${t.dataAtualizacao?fmtDT(t.dataAtualizacao):'—'}</span></td><td><button class="btn btn-ghost btn-sm" onclick="openTaskModal('${t.id}')">Atualizar</button></td></tr>`;}).join('')}
+      </tbody></table></div></div>`;}).join('');
+  container.innerHTML=has?html:`<div class="empty-state"><div class="icon">🔍</div><p>Nenhuma obrigação com os filtros aplicados.</p></div>`;
+}
+
+// ── GERAR OBRIGAÇÕES ─────────────────────────────────────
+function generateObligations(){
+  const val=document.getElementById('gen-month').value;
+  if(!val){toast('Selecione o mês/ano','err');return;}
+  if(!ST.clients.length){toast('Cadastre clientes primeiro','err');return;}
+  const [year,month]=val.split('-').map(Number);let cr=0,sk=0;
+  ST.clients.forEach(client=>{
+    ST.obligations.filter(o=>o.ativo&&(o.regime===client.regime||o.regime==='AMBOS')).forEach(obrig=>{
+      if(obrig.periodicidade==='anual'&&obrig.mesVencimento!==month)return;
+      if(obrig.periodicidade==='trimestral'&&![3,6,9,12].includes(month))return;
+      if(ST.tasks.find(t=>t.clienteId===client.id&&t.obrigacaoId===obrig.id&&t.mes===month&&t.ano===year)){sk++;return;}
+      const ld=new Date(year,month,0).getDate(),day=Math.min(obrig.diaVencimento,ld),due=`${year}-${pad(month)}-${pad(day)}`;
+      ST.tasks.push({id:`t_${Date.now()}_${Math.random().toString(36).slice(2,6)}`,clienteId:client.id,obrigacaoId:obrig.id,nomeObrigacao:obrig.nome,mes:month,ano:year,status:'aguardando_docs',dataVencimento:due,obs:'',usuarioId:client.responsavelId||null,dataAtualizacao:null,historico:[]});cr++;
+    });
+  });
+  updateStatuses();save();toast(`✅ ${cr} obrigações geradas! (${sk} já existiam)`);renderDashboard();
+}
+
+// ── CONFIGURAÇÕES ────────────────────────────────────────
+function renderConfig(){
+  const grouped={fiscal:[],pessoal:[],contabil:[],societario:[]};
+  ST.obligations.forEach(o=>{const g=o.grupo||'fiscal';(grouped[g]=grouped[g]||[]).push(o);});
+  const secs=[{key:'fiscal',label:'Fiscal',icon:'📘',color:'#003d7a'},{key:'pessoal',label:'Depto. Pessoal',icon:'👥',color:'#5a1a8a'},{key:'contabil',label:'Contábil',icon:'📒',color:'#145a28'},{key:'societario',label:'Societário',icon:'🏢',color:'#7d4500'}];
+  document.getElementById('obrigacoes-config-list').innerHTML=secs.map(s=>`<div style="margin-bottom:18px"><div style="font-size:10.5px;font-weight:800;color:${s.color};letter-spacing:.8px;text-transform:uppercase;margin-bottom:8px">${s.icon} ${s.label}</div><div style="display:flex;flex-direction:column;gap:5px">${(grouped[s.key]||[]).map(o=>`<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px;border-radius:8px;border:1px solid ${o.ativo?'var(--gray-border)':'#eee'};background:${o.ativo?'white':'#fafafa'}"><div style="display:flex;align-items:center;gap:8px"><label class="toggle"><input type="checkbox" ${o.ativo?'checked':''} onchange="toggleObrig('${o.id}',this.checked)"><span class="toggle-slider"></span></label><span style="font-size:13px;font-weight:600;color:${o.ativo?'var(--text)':'#bbb'}">${o.nome}</span>${!o.ativo?'<span class="tag-inativo">inativa</span>':''}</div><span style="font-size:11px;color:var(--gray-text)">${o.periodicidade} · dia ${o.diaVencimento}</span></div>`).join('')}${!(grouped[s.key]||[]).length?'<span style="font-size:12px;color:var(--gray-text)">Nenhuma</span>':''}</div></div>`).join('');
+  const now=new Date();document.getElementById('gen-month').value=`${now.getFullYear()}-${pad(now.getMonth()+1)}`;
+}
+function toggleObrig(id,ativo){const o=byId(ST.obligations,id);if(o){o.ativo=ativo;save();toast(ativo?'Obrigação ativada.':'Obrigação inativada.');renderConfig();}}
+function toggleMesVenc(){document.getElementById('mes-venc-group').classList.toggle('hidden',document.getElementById('obrig-period').value!=='anual');}
+function openObrigacaoModal(){document.getElementById('obrig-nome').value='';document.getElementById('obrig-grupo').value='fiscal';document.getElementById('obrig-regime').value='SN';document.getElementById('obrig-period').value='mensal';document.getElementById('obrig-dia').value='';document.getElementById('mes-venc-group').classList.add('hidden');document.getElementById('modal-obrig').classList.remove('hidden');}
+function saveObrigacao(){
+  const nome=document.getElementById('obrig-nome').value.trim(),dia=parseInt(document.getElementById('obrig-dia').value);
+  if(!nome||!dia){toast('Preencha nome e dia','err');return;}
+  const obrig={id:`o_${Date.now()}`,nome,grupo:document.getElementById('obrig-grupo').value,regime:document.getElementById('obrig-regime').value,periodicidade:document.getElementById('obrig-period').value,diaVencimento:dia,ativo:true};
+  if(obrig.periodicidade==='anual')obrig.mesVencimento=parseInt(document.getElementById('obrig-mes').value);
+  ST.obligations.push(obrig);save();CM('modal-obrig');renderConfig();toast('Obrigação cadastrada!');
+}
+
+// ── INICIALIZAÇÃO ────────────────────────────────────────
+loadST();
+save(); // Persiste dados padrão (master seed + clientes demo)
+
+// Restaurar sessão se existir
+(function(){
+  const uid=sessionStorage.getItem('cm_uid');
+  if(uid){
+    const u=byId(ST.users,uid);
+    if(u&&!u.primeiroAcesso){
+      curUser=u;
+      document.getElementById('login-screen').style.display='none';
+      document.getElementById('app-shell').style.display='block';
+      renderSidebar();updateStatuses();showView('dashboard');
+    }
+  }
+  // Se não tem sessão, login já está visível por padrão no CSS
+})();
+</script>
+</body>
+</html>
